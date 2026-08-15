@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingo da Família — Mesa do sorteio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --feltro:#12463A; --feltro-esc:#0B2E26;
+    --marfim:#FBF5E4; --tinta:#16211E; --tinta-fraca:#5E6B66;
+    --c0:#E14B22; --t0:#fff;
+    --c1:#E0A100; --t1:#2B1E00;
+    --c2:#7A3E9D; --t2:#fff;
+    --c3:#1F5FA8; --t3:#fff;
+    --c4:#C6306B; --t4:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--marfim);
+    background:var(--feltro-esc);
+    min-height:100%;overflow-x:hidden;-webkit-font-smoothing:antialiased;
+  }
+  /* fundo preso à tela: não estica nem muda de tom ao rolar */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 0%, #1A5C4A 0%, var(--feltro) 45%, var(--feltro-esc) 100%);
+  }
+  .tela{
+    min-height:100vh;padding:clamp(16px,2.4vmin,34px) clamp(16px,3vw,44px) clamp(20px,3vmin,40px);
+    display:grid;grid-template-rows:auto 1fr auto;gap:clamp(12px,2vmin,26px);
+  }
+
+  /* ---------- topo ---------- */
+  .topo{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+  .marca{font-family:'Bungee',cursive;font-size:clamp(26px,4.4vmin,54px);line-height:.9}
+  .marca span:nth-child(1){color:var(--c0)}
+  .marca span:nth-child(2){color:var(--c1)}
+  .marca span:nth-child(3){color:var(--c2)}
+  .marca span:nth-child(4){color:#7FB3E8}
+  .marca span:nth-child(5){color:var(--c4)}
+  .sub{font-size:clamp(10px,1.4vmin,15px);letter-spacing:.24em;text-transform:uppercase;color:#9FC4B7;margin-top:8px}
+  .contagem{font-variant-numeric:tabular-nums;font-size:clamp(11px,1.5vmin,16px);letter-spacing:.16em;
+    text-transform:uppercase;color:#9FC4B7;margin-top:10px}
+  .contagem b{color:var(--marfim);font-size:1.5em;font-weight:800}
+
+  /* ---------- qr no canto ---------- */
+  .convite{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto}
+  .qr-papel{background:#fff;padding:clamp(7px,1vmin,12px);border-radius:12px;line-height:0;
+    box-shadow:0 8px 22px rgba(0,0,0,.3)}
+  .qr-papel img,.qr-papel canvas{display:block;width:clamp(88px,11vmin,150px)!important;height:auto!important}
+  .convite .rot{font-size:clamp(9px,1.2vmin,13px);letter-spacing:.16em;text-transform:uppercase;color:#9FC4B7;text-align:center}
+  .trocar{background:none;border:0;color:#6E9184;font-size:11px;text-decoration:underline;cursor:pointer;opacity:.45;padding:2px 6px}
+  .trocar:hover,.trocar:focus-visible{opacity:1;color:#BBD6CB}
+  .troca{display:none;gap:6px;position:absolute;right:clamp(16px,3vw,44px);top:clamp(150px,20vmin,240px);
+    z-index:20;background:#0B2E26;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px}
+  .troca.abre{display:flex}
+  .troca input{width:min(48vw,300px);font-family:inherit;font-size:13px;padding:9px 11px;border-radius:8px;
+    border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:var(--marfim)}
+  .troca button{background:var(--c2);color:#fff;font-weight:700;font-size:13px;padding:9px 16px;border:0;border-radius:8px;cursor:pointer}
+
+  /* ---------- palco: bola rolando ---------- */
+  .palco{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(14px,2.4vmin,32px)}
+  .pista{position:relative;width:100%;overflow:hidden;display:flex;justify-content:center;
+    padding:clamp(6px,1.2vmin,16px) 0}
+  .pista::after{content:'';position:absolute;left:8%;right:8%;bottom:2px;height:2px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .bola{width:clamp(150px,30vmin,300px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+    background:#2C4A42;will-change:transform;
+    box-shadow:inset 0 -14px 26px rgba(0,0,0,.3), inset 0 10px 20px rgba(255,255,255,.14), 0 16px 34px rgba(0,0,0,.35)}
+  .bola .miolo{width:74%;height:74%;border-radius:50%;background:var(--marfim);
+    display:grid;place-items:center;box-shadow:inset 0 3px 8px rgba(0,0,0,.18)}
+  .num{font-size:clamp(58px,13.5vmin,158px);font-weight:800;line-height:.92;color:var(--tinta);font-variant-numeric:tabular-nums}
+  .bola.vazia .num{font-size:clamp(20px,3.4vmin,38px);font-weight:600;color:var(--tinta-fraca)}
+  .miolo.assenta{animation:assenta .5s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes assenta{0%{transform:scale(.9)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
+
+  /* ---------- últimas ---------- */
+  .trilho{display:flex;gap:clamp(8px,1.4vmin,16px);justify-content:center;align-items:center;
+    flex-wrap:wrap;min-height:clamp(48px,7vmin,76px)}
+  .mini{width:clamp(46px,6.6vmin,74px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+    font-weight:800;font-size:clamp(18px,2.9vmin,32px);font-variant-numeric:tabular-nums;
+    background:var(--marfim);color:var(--tinta);border:clamp(3px,.6vmin,6px) solid var(--c)}
+  .mini:nth-child(n+4){opacity:.45;transform:scale(.84)}
+  .nada{color:#7F9D92;font-size:clamp(12px,1.6vmin,17px)}
+
+  /* ---------- botões ---------- */
+  button{font-family:inherit;cursor:pointer}
+  .rodar{border:0;border-radius:999px;background:var(--c0);color:#fff;
+    font-size:clamp(19px,2.8vmin,34px);font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    padding:clamp(15px,2.2vmin,26px) clamp(46px,7vmin,88px);box-shadow:0 7px 0 #A6320F;
+    transition:filter .12s ease,transform .12s ease}
+  .rodar:hover{filter:brightness(1.07)}
+  .rodar:active{box-shadow:0 3px 0 #A6320F;transform:translateY(2px)}
+  .rodar[disabled]{background:#3E5850;color:#93A9A1;box-shadow:0 7px 0 #2A3D37;cursor:not-allowed;transform:none}
+  button:focus-visible{outline:3px solid #FFD166;outline-offset:4px}
+
+  /* ---------- rodapé: painel de 1 a 75 ---------- */
+  .rodape{display:flex;flex-direction:column;gap:clamp(6px,1vmin,12px)}
+  .rotulo{display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .rotulo span{font-size:clamp(9px,1.2vmin,13px);letter-spacing:.24em;text-transform:uppercase;color:#7F9D92}
+  .reiniciar{background:transparent;color:#7F9D92;border:1px solid rgba(255,255,255,.18);border-radius:999px;
+    padding:clamp(7px,1vmin,11px) clamp(14px,1.8vmin,22px);font-size:clamp(11px,1.3vmin,15px);font-weight:600;
+    transition:background .15s ease,color .15s ease}
+  .reiniciar:hover{background:rgba(255,255,255,.08);color:#fff}
+  .reiniciar.armado{background:#FFD166;color:#2B1E00;border-color:#FFD166}
+  .cartaz{display:flex;flex-direction:column;gap:clamp(3px,.5vmin,7px)}
+  .fila{display:grid;grid-template-columns:repeat(15,1fr);gap:clamp(3px,.5vmin,7px);align-items:center}
+  .fila i{font-style:normal;display:grid;place-items:center;aspect-ratio:1;border-radius:20%;
+    font-size:clamp(8px,1.5vmin,18px);font-weight:600;font-variant-numeric:tabular-nums;
+    background:rgba(255,255,255,.07);color:#89A69D;transition:background .25s ease,color .25s ease}
+  .fila i.saiu{background:var(--c);color:var(--ct)}
+
+  @media (max-width:700px){
+    .qr-papel img,.qr-papel canvas{width:84px!important}
+  }
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<div class="tela">
+
+  <div class="topo">
+    <div>
+      <div class="marca" aria-label="Bingo"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+      <div class="sub">Mesa do sorteio</div>
+      <div class="contagem"><b id="qtd">0</b> / 75 bolas</div>
+    </div>
+
+    <div class="convite">
+      <div class="qr-papel" id="qr"></div>
+      <div class="rot">Aponte a câmera<br>e pegue sua cartela</div>
+      <button class="trocar" id="btnTrocar">trocar link</button>
+    </div>
+  </div>
+
+  <div class="troca" id="troca">
+    <input id="link" type="url" inputmode="url" aria-label="Link da cartela">
+    <button id="btnQr">Gerar QR</button>
+  </div>
+
+  <main class="palco">
+    <div class="pista">
+      <div class="bola vazia" id="bola">
+        <div class="miolo" id="miolo">
+          <div class="num" id="bolaNum">pronto?</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="rodar" id="btnRodar">Rodar</button>
+
+    <div class="trilho" id="trilho"><span class="nada">Nenhuma bola sorteada ainda.</span></div>
+  </main>
+
+  <footer class="rodape">
+    <div class="rotulo">
+      <span>Já saíram</span>
+      <button class="reiniciar" id="btnReset">Reiniciar rodada</button>
+    </div>
+    <div class="cartaz" id="cartaz"></div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var LINK_CARTELA = 'https://cartela-five.vercel.app/';
+  var TOTAL = 75;
+  var CORES = ['#E14B22','#E0A100','#7A3E9D','#1F5FA8','#C6306B'];
+  var TEXTOS = ['#fff','#2B1E00','#fff','#fff','#fff'];
+  var CHAVE = 'bingo:mesa:v4';
+  var reduzido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // a cor é só um recurso visual por faixa de dezenas — não existe mais coluna
+  function faixa(n){ return Math.min(4, Math.floor((n-1)/15)); }
+  function cor(n){ return CORES[faixa(n)]; }
+
+  var estado = { sorteados: [] };
+  var rodando = false;
+
+  function salvar(){
+    try{ if(window.storage && window.storage.set) window.storage.set(CHAVE, JSON.stringify(estado)); }catch(e){}
+  }
+  function carregar(){
+    try{
+      if(!window.storage || !window.storage.get) return Promise.resolve(null);
+      return window.storage.get(CHAVE).then(function(r){
+        return r && r.value ? JSON.parse(r.value) : null;
+      }).catch(function(){ return null; });
+    }catch(e){ return Promise.resolve(null); }
+  }
+
+  var elBola=document.getElementById('bola'), elMiolo=document.getElementById('miolo'),
+      elNum=document.getElementById('bolaNum'), elQtd=document.getElementById('qtd'),
+      elTrilho=document.getElementById('trilho'), elCartaz=document.getElementById('cartaz'),
+      btnRodar=document.getElementById('btnRodar'), elPista=document.querySelector('.pista');
+
+  for(var f=0; f<5; f++){
+    var fila=document.createElement('div');
+    fila.className='fila';
+    fila.style.setProperty('--c', CORES[f]);
+    fila.style.setProperty('--ct', TEXTOS[f]);
+    for(var n=f*15+1; n<=f*15+15; n++){
+      var cel=document.createElement('i'); cel.textContent=n; cel.dataset.n=n; fila.appendChild(cel);
+    }
+    elCartaz.appendChild(fila);
+  }
+
+  function pintaBola(n){
+    elBola.classList.remove('vazia');
+    elBola.style.background = cor(n);
+    elNum.textContent = n;
+  }
+
+  function desenha(){
+    elQtd.textContent = estado.sorteados.length;
+    var fora={}; estado.sorteados.forEach(function(n){ fora[n]=1; });
+    Array.prototype.forEach.call(elCartaz.querySelectorAll('i'), function(c){
+      c.classList.toggle('saiu', !!fora[c.dataset.n]);
+    });
+
+    elTrilho.innerHTML='';
+    var ult = estado.sorteados.slice(-6).reverse();
+    if(!ult.length){
+      var v=document.createElement('span'); v.className='nada';
+      v.textContent='Nenhuma bola sorteada ainda.'; elTrilho.appendChild(v);
+    } else {
+      ult.forEach(function(n){
+        var d=document.createElement('div'); d.className='mini';
+        d.style.setProperty('--c', cor(n));
+        d.textContent=n; elTrilho.appendChild(d);
+      });
+    }
+
+    var ultima = estado.sorteados[estado.sorteados.length-1];
+    if(ultima){ pintaBola(ultima); }
+    else{
+      elBola.classList.add('vazia');
+      elBola.style.background='#2C4A42';
+      elNum.textContent='pronto?';
+    }
+
+    var fim = estado.sorteados.length>=TOTAL;
+    btnRodar.disabled = fim || rodando;
+    btnRodar.textContent = fim ? 'Acabaram as bolas' : 'Rodar';
+  }
+
+  /* ---------- voz ---------- */
+  var vozPt=null;
+  function achaVoz(){
+    try{
+      var vs=window.speechSynthesis.getVoices()||[];
+      for(var i=0;i<vs.length;i++){ if(/pt(-|_)?BR/i.test(vs[i].lang)){ vozPt=vs[i]; return; } }
+      for(var j=0;j<vs.length;j++){ if(/^pt/i.test(vs[j].lang)){ vozPt=vs[j]; return; } }
+    }catch(e){}
+  }
+  if(window.speechSynthesis){ achaVoz(); window.speechSynthesis.onvoiceschanged=achaVoz; }
+  function fala(texto){
+    if(!window.speechSynthesis) return;
+    try{
+      window.speechSynthesis.cancel();
+      var f=new SpeechSynthesisUtterance(texto);
+      f.lang='pt-BR'; f.rate=.9;
+      if(vozPt) f.voice=vozPt;
+      window.speechSynthesis.speak(f);
+    }catch(e){}
+  }
+
+  /* ---------- a bola rolando ---------- */
+  function restantes(){
+    var fora={}; estado.sorteados.forEach(function(n){ fora[n]=1; });
+    var r=[]; for(var n=1;n<=TOTAL;n++) if(!fora[n]) r.push(n);
+    return r;
+  }
+
+  var DURACAO = 3000; // ms
+
+  function rodar(){
+    if(rodando) return;
+    var pool = restantes();
+    if(!pool.length) return;
+    var sorteado = pool[Math.floor(Math.random()*pool.length)];
+
+    function conclui(){
+      rodando=false;
+      elBola.style.transform='';
+      estado.sorteados.push(sorteado);
+      desenha();
+      elMiolo.classList.remove('assenta'); void elMiolo.offsetWidth; elMiolo.classList.add('assenta');
+      fala(String(sorteado));
+      salvar();
+    }
+
+    if(reduzido){ conclui(); return; }
+
+    rodando=true;
+    btnRodar.disabled=true;
+    elBola.classList.remove('vazia');
+
+    var raio = elBola.offsetWidth/2;
+    var largura = elPista.offsetWidth;
+    var dist = (largura/2 + raio*1.2) * 1.35;   // entra na tela nos primeiros quadros
+    var inicio=null, ultimaTroca=0, travado=false;
+
+    function passo(ts){
+      if(inicio===null) inicio=ts;
+      var t = Math.min(1, (ts-inicio)/DURACAO);
+      var e = 1 - Math.pow(1-t, 3);             // desacelera até parar
+      var x = -dist * (1-e);
+      var giro = (x / raio) * (180/Math.PI);    // giro real de quem rola no chão
+      elBola.style.transform = 'translateX('+x.toFixed(1)+'px) rotate('+giro.toFixed(1)+'deg)';
+
+      if(!travado){
+        var intervalo = 55 + 520*t*t;
+        if(ts - ultimaTroca > intervalo){
+          ultimaTroca = ts;
+          if(t > 0.82){ travado = true; pintaBola(sorteado); }
+          else { pintaBola(pool[Math.floor(Math.random()*pool.length)]); }
+        }
+      }
+
+      if(t < 1) requestAnimationFrame(passo);
+      else conclui();
+    }
+    requestAnimationFrame(passo);
+  }
+  btnRodar.addEventListener('click', rodar);
+
+  /* ---------- reiniciar (dois toques) ---------- */
+  var btnReset=document.getElementById('btnReset');
+  var armado=false, tArmado=null;
+  function desarma(){
+    armado=false; clearTimeout(tArmado);
+    btnReset.classList.remove('armado');
+    btnReset.textContent='Reiniciar rodada';
+  }
+  btnReset.addEventListener('click', function(){
+    if(!armado){
+      armado=true;
+      btnReset.classList.add('armado');
+      btnReset.textContent='Confirmar reinício';
+      tArmado=setTimeout(desarma, 5000);
+      return;
+    }
+    desarma();
+    rodando=false;
+    elBola.style.transform='';
+    estado.sorteados=[];
+    desenha(); salvar();
+    fala('Rodada reiniciada');
+  });
+
+  /* ---------- QR ---------- */
+  var elQr=document.getElementById('qr'), campo=document.getElementById('link');
+  campo.value = LINK_CARTELA;
+  function geraQr(url){
+    if(typeof QRCode==='undefined'){
+      elQr.innerHTML='<div style="font:600 11px Archivo,sans-serif;color:#12463A;padding:14px;max-width:150px;line-height:1.5">O gerador de QR não carregou. Recarregue o artefato.</div>';
+      return;
+    }
+    elQr.innerHTML='';
+    new QRCode(elQr,{text:url,width:300,height:300,colorDark:'#12463A',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  }
+  geraQr(LINK_CARTELA);
+
+  document.getElementById('btnTrocar').addEventListener('click', function(){
+    document.getElementById('troca').classList.toggle('abre');
+  });
+  document.getElementById('btnQr').addEventListener('click', function(){
+    var u=campo.value.trim();
+    if(!u) return;
+    if(!/^https?:\/\//i.test(u)){ u='https://'+u; campo.value=u; }
+    LINK_CARTELA=u; geraQr(u);
+    document.getElementById('troca').classList.remove('abre');
+  });
+
+  /* ---------- início ---------- */
+  Promise.resolve(carregar()).then(function(s){
+    if(s && s.sorteados && s.sorteados.length) estado.sorteados=s.sorteados;
+    desenha();
+  });
+})();
+</script>
+</body>
+</html>
