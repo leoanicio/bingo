@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingo da Família — Minha cartela</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --feltro:#12463A; --feltro-esc:#0B2E26;
+    --marfim:#FBF5E4; --marfim-som:#EDE3CB; --tinta:#16211E;
+    --c0:#E14B22; --c1:#E0A100; --c2:#7A3E9D; --c3:#1F5FA8; --c4:#C6306B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--marfim);
+    background:var(--feltro-esc);
+    min-height:100%;padding:22px 16px 40px;-webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;align-items:center;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 0%, #1A5C4A 0%, var(--feltro) 45%, var(--feltro-esc) 100%);
+  }
+  .wrap{width:100%;max-width:440px}
+  header{text-align:center;margin-bottom:20px}
+  .marca{font-family:'Bungee',cursive;font-size:clamp(28px,9vw,40px);line-height:.9}
+  .marca span:nth-child(1){color:var(--c0)}
+  .marca span:nth-child(2){color:var(--c1)}
+  .marca span:nth-child(3){color:var(--c2)}
+  .marca span:nth-child(4){color:#7FB3E8}
+  .marca span:nth-child(5){color:var(--c4)}
+  .sub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#9FC4B7;margin-top:8px}
+
+  .cartela{background:var(--marfim);border-radius:16px;padding:16px;
+    box-shadow:0 16px 34px rgba(0,0,0,.34)}
+  .grade{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  button{font-family:inherit;cursor:pointer;border:0;transition:transform .12s ease,filter .12s ease,background .18s ease,color .18s ease}
+  button:focus-visible{outline:3px solid #FFD166;outline-offset:3px}
+  .casa{aspect-ratio:1;border-radius:11px;background:var(--marfim-som);color:var(--tinta);
+    font-size:clamp(21px,7vw,30px);font-weight:700;font-variant-numeric:tabular-nums;
+    display:grid;place-items:center;border:1px solid rgba(0,0,0,.08)}
+  .casa:hover{filter:brightness(.97)}
+  .casa:active{transform:scale(.96)}
+  .casa[aria-pressed="true"]{background:var(--c);color:var(--ct);border-color:transparent;
+    animation:carimbo .18s ease-out}
+  @keyframes carimbo{from{transform:scale(.8)}to{transform:scale(1)}}
+  .casa.livre{background:#DCCFA8;color:#6B5A2E;font-family:'Bungee',cursive;
+    font-size:clamp(10px,3vw,13px);cursor:default}
+
+  .rodape{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+  .contador{font-size:13px;color:#9FC4B7}
+  .contador b{color:var(--marfim);font-weight:700}
+  .reset{background:transparent;color:#BBD6CB;border:1px solid rgba(255,255,255,.25);
+    border-radius:999px;padding:11px 20px;font-size:13px;font-weight:600}
+  .reset:hover{background:rgba(255,255,255,.08);color:#fff}
+  .reset.armado{background:#FFD166;color:#2B1E00;border-color:#FFD166}
+  .legenda{margin-top:14px;font-size:12.5px;color:#89AA9E;text-align:center;line-height:1.55}
+
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="marca" aria-label="Bingo"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+    <div class="sub">Minha cartela</div>
+  </header>
+
+  <div class="cartela">
+    <div class="grade" id="grade"></div>
+  </div>
+
+  <div class="rodape">
+    <span class="contador"><b id="qtd">0</b> casas marcadas</span>
+    <button class="reset" id="btnLimpar">Limpar</button>
+  </div>
+
+  <p class="legenda">Toque no número para marcar. Toque de novo para desmarcar.<br>Sua cartela fica salva mesmo se você fechar a página.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var TOTAL = 75;
+  var CASAS = 25, LIVRE = 12;           // centro da grade 5x5
+  var CORES = ['#E14B22','#E0A100','#7A3E9D','#1F5FA8','#C6306B'];
+  var TEXTOS = ['#fff','#2B1E00','#fff','#fff','#fff'];
+  var CHAVE = 'bingo:cartela:v2';
+
+  function faixa(n){ return Math.min(4, Math.floor((n-1)/15)); }
+
+  // 24 números quaisquer de 1 a 75, sem repetir dentro da cartela
+  function sorteiaCartela(){
+    var pool=[];
+    for(var n=1;n<=TOTAL;n++) pool.push(n);
+    for(var i=pool.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var t=pool[i]; pool[i]=pool[j]; pool[j]=t;
+    }
+    var escolhidos = pool.slice(0, CASAS-1);
+    var celulas=[], k=0;
+    for(var c=0;c<CASAS;c++) celulas.push(c===LIVRE ? null : escolhidos[k++]);
+    return celulas;
+  }
+
+  var estado = { cartela: sorteiaCartela(), marcados: [] };
+
+  function salvar(){
+    try{ localStorage.setItem(CHAVE, JSON.stringify(estado)); }catch(e){}
+  }
+  function carregar(){
+    try{
+      var bruto = localStorage.getItem(CHAVE);
+      return bruto ? JSON.parse(bruto) : null;
+    }catch(e){ return null; }
+  }
+
+  var elGrade=document.getElementById('grade'), elQtd=document.getElementById('qtd');
+  var casas=[];
+
+  for(var c=0;c<CASAS;c++){
+    var b=document.createElement('button');
+    if(c===LIVRE){
+      b.className='casa livre'; b.textContent='LIVRE'; b.disabled=true;
+    } else {
+      b.className='casa';
+      b.dataset.i=c;
+      b.setAttribute('aria-pressed','false');
+      b.addEventListener('click', alterna);
+    }
+    elGrade.appendChild(b);
+    casas.push(b);
+  }
+
+  function desenha(){
+    casas.forEach(function(b,i){
+      if(i===LIVRE) return;
+      var n = estado.cartela[i];
+      b.textContent = n;
+      b.style.setProperty('--c', CORES[faixa(n)]);
+      b.style.setProperty('--ct', TEXTOS[faixa(n)]);
+      var m = estado.marcados.indexOf(n) !== -1;
+      b.setAttribute('aria-pressed', m?'true':'false');
+      b.setAttribute('aria-label', n + (m?', marcado':''));
+    });
+    elQtd.textContent = estado.marcados.length;
+  }
+
+  function alterna(ev){
+    var b=ev.currentTarget;
+    var n=estado.cartela[+b.dataset.i];
+    var i=estado.marcados.indexOf(n);
+    if(i===-1) estado.marcados.push(n); else estado.marcados.splice(i,1);
+    desenha(); salvar();
+  }
+
+  /* limpar: apaga só as marcações, os números continuam os mesmos */
+  var btnLimpar=document.getElementById('btnLimpar');
+  var armado=false, tArmado=null;
+  function desarma(){
+    armado=false; clearTimeout(tArmado);
+    btnLimpar.classList.remove('armado');
+    btnLimpar.textContent='Limpar';
+  }
+  btnLimpar.addEventListener('click', function(){
+    if(!estado.marcados.length) return;
+    if(!armado){
+      armado=true;
+      btnLimpar.classList.add('armado');
+      btnLimpar.textContent='Confirmar';
+      tArmado=setTimeout(desarma, 5000);
+      return;
+    }
+    desarma();
+    estado.marcados=[];
+    desenha(); salvar();
+  });
+
+  var salvo = carregar();
+  if(salvo && salvo.cartela && salvo.cartela.length===CASAS && Array.isArray(salvo.marcados)){
+    estado = salvo;
+  } else {
+    salvar();   // primeira visita: guarda a cartela sorteada agora
+  }
+  desenha();
+})();
+</script>
+</body>
+</html>
